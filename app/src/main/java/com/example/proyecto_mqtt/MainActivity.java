@@ -2,99 +2,117 @@ package com.example.proyecto_mqtt;
 
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
 import androidx.appcompat.app.AppCompatActivity;
-import org.eclipse.paho.android.service.MqttAndroidClient;
-import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 public class MainActivity extends AppCompatActivity {
 
-    private MqttAndroidClient client;
-    private TextView textViewReceived;
+    private static final String TAG = "MQTT";
+    private MqttClient mqttClient;
     private EditText editTextMessage;
+    private TextView textViewReceived;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        textViewReceived = findViewById(R.id.textViewReceived);
         editTextMessage = findViewById(R.id.editTextMessage);
+        textViewReceived = findViewById(R.id.textViewReceived);
         Button buttonSend = findViewById(R.id.buttonSend);
 
+        String serverUri = "tcp://test.mosquitto.org:1883"; // Change this to your broker
         String clientId = MqttClient.generateClientId();
-        client = new MqttAndroidClient(this.getApplicationContext(), "tcp://test.mosquitto.org:1883", clientId);
 
         try {
-            MqttConnectOptions options = new MqttConnectOptions();
-            options.setCleanSession(true);
-            client.connect(options, null, new IMqttActionListener() {
+            mqttClient = new MqttClient(serverUri, clientId, null); // Using the core MQTT client
+
+            // Set the callback to handle message reception
+            mqttClient.setCallback(new MqttCallback() {
                 @Override
-                public void onSuccess(IMqttToken asyncActionToken) {
-                    Log.d("MQTT", "Conexión exitosa");
-                    subscribeToTopic();
+                public void connectionLost(Throwable cause) {
+                    Log.e(TAG, "Connection lost", cause);
                 }
 
                 @Override
-                public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                    Log.e("MQTT", "Error al conectar", exception);
+                public void messageArrived(String topic, MqttMessage message) {
+                    // Handle incoming messages
+                    String receivedMessage = new String(message.getPayload());
+                    runOnUiThread(() -> textViewReceived.setText("Received: " + receivedMessage));
+                }
+
+                @Override
+                public void deliveryComplete(IMqttDeliveryToken token) {
+                    // Handle message delivery confirmation
                 }
             });
-        } catch (Exception e) {
-            e.printStackTrace();
+
+            // Connect to the broker
+            connectToBroker();
+
+        } catch (MqttException e) {
+            Log.e(TAG, "Error initializing MQTT client", e);
         }
 
-        buttonSend.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String message = editTextMessage.getText().toString();
+        // Set the button to send the message when clicked
+        buttonSend.setOnClickListener(v -> {
+            String message = editTextMessage.getText().toString();
+            if (!message.isEmpty()) {
                 publishMessage(message);
             }
         });
     }
 
-    private void subscribeToTopic() {
-        try {
-            client.subscribe("test/topic", 0);
-            client.setCallback(new MqttCallback() {
-                @Override
-                public void connectionLost(Throwable cause) {
-                    Log.e("MQTT", "Conexión perdida");
-                }
+    private void connectToBroker() {
+        new Thread(() -> {
+            try {
+                MqttConnectOptions options = new MqttConnectOptions();
+                options.setCleanSession(true);
+                mqttClient.connect(options);
 
-                @Override
-                public void messageArrived(String topic, MqttMessage message) throws Exception {
-                    Log.d("MQTT", "Mensaje recibido: " + message.toString());
-                    runOnUiThread(() -> textViewReceived.setText("Mensajes recibidos:\n" + message.toString()));
-                }
+                // Subscribe to a topic after successful connection
+                mqttClient.subscribe("test/topic", 1);
 
-                @Override
-                public void deliveryComplete(IMqttDeliveryToken token) {
-                    Log.d("MQTT", "Mensaje entregado");
-                }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+                Log.d(TAG, "Connected to broker");
+
+            } catch (MqttException e) {
+                Log.e(TAG, "Error connecting to broker", e);
+            }
+        }).start();
     }
 
     private void publishMessage(String message) {
+        new Thread(() -> {
+            try {
+                MqttMessage mqttMessage = new MqttMessage(message.getBytes());
+                mqttMessage.setQos(1);
+                mqttClient.publish("test/topic", mqttMessage); // Publish message to a topic
+                Log.d(TAG, "Message sent: " + message);
+            } catch (MqttException e) {
+                Log.e(TAG, "Error publishing message", e);
+            }
+        }).start();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
         try {
-            MqttMessage mqttMessage = new MqttMessage();
-            mqttMessage.setPayload(message.getBytes());
-            client.publish("test/topic", mqttMessage);
-            Log.d("MQTT", "Mensaje enviado: " + message);
-        } catch (Exception e) {
-            e.printStackTrace();
+            if (mqttClient != null && mqttClient.isConnected()) {
+                mqttClient.disconnect();
+            }
+        } catch (MqttException e) {
+            Log.e(TAG, "Error disconnecting", e);
         }
     }
 }

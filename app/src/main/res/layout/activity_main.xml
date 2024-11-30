@@ -6,14 +6,13 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <!-- Campo de entrada de texto para enviar mensajes -->
+    <!-- Campo de entrada de texto -->
     <EditText
         android:id="@+id/editTextMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Escribe un mensaje"
         android:padding="8dp"
-        android:background="@drawable/ic_launcher_background"
         android:layout_marginBottom="8dp" />
 
     <!-- Botón para enviar mensajes -->
@@ -30,9 +29,7 @@
         android:id="@+id/textViewReceived"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/ic_launcher_background"
-        android:padding="8dp"
         android:text="Mensajes recibidos:"
         android:textSize="16sp"
-        android:textColor="@android:color/black" />
+        android:padding="8dp" />
 </LinearLayout>

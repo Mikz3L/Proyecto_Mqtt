@@ -32,14 +32,19 @@ android {
 }
 
 dependencies {
-    implementation ("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
-    implementation ("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1")
+    // AndroidX libraries
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
+
+    // MQTT Client library
     implementation ("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
-    implementation(libs.appcompat)
-    implementation(libs.material)
-    implementation(libs.activity)
-    implementation(libs.constraintlayout)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.ext.junit)
-    androidTestImplementation(libs.espresso.core)
+    implementation ("org.eclipse.paho:org.eclipse.paho.android.service:1.1.1") // Esta es la librería específica para Android
+
+    // Unit testing
+    testImplementation("junit:junit:4.13.2")
+
+    // Android test libraries
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }
